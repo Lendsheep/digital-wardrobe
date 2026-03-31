@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Item = {
+  id: string;
   name: string;
   image: string;
 };
@@ -18,6 +20,7 @@ export default function Home() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [newItem, setNewItem] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   // 📊 Analytics
   // 📊 Advanced Analytics
 
@@ -46,41 +49,70 @@ const leastWorn = outfits.reduce((min, outfit) =>
 
   // Load
   useEffect(() => {
-    const savedItems = localStorage.getItem("wardrobe");
-    const savedOutfits = localStorage.getItem("outfits");
+  async function loadItems() {
+   try {
+    const { data, error } = await supabase
+      .from("items")
+      .select("*")
+      .order("name", { ascending: true });
 
-    if (savedItems) setItems(JSON.parse(savedItems));
-    if (savedOutfits) setOutfits(JSON.parse(savedOutfits));
-  }, []);
+    if (error) {
+      console.error("Error loading items:", error);
+      setErrorMessage(error.message);
+      setItems([]);
+      return;
+    }
+
+    setItems(data || []);
+    } catch (err) {
+      console.error("Unexpected error loading items:", err);
+      setErrorMessage("Failed to load data from Supabase.");
+      setItems([]);
+    }
+  }
+
+  loadItems();
+}, []);
 
   // Save
-  useEffect(() => {
-    localStorage.setItem("wardrobe", JSON.stringify(items));
-  }, [items]);
 
   useEffect(() => {
     localStorage.setItem("outfits", JSON.stringify(outfits));
   }, [outfits]);
 
   // Upload
-  function handleImageUpload(e: any) {
-    const file = e.target.files[0];
-    if (!file) return;
+async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    const reader = new FileReader();
+  const reader = new FileReader();
 
-    reader.onloadend = () => {
-      const newCloth: Item = {
-        name: newItem || "Untitled",
-        image: reader.result as string,
-      };
+  reader.onloadend = async () => {
+    const imageBase64 = reader.result as string;
 
-      setItems([...items, newCloth]);
+    const { data, error } = await supabase
+      .from("items")
+      .insert([
+        {
+          name: newItem || "Untitled",
+          image: imageBase64,
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Error saving item:", error);
+      return;
+    }
+
+    if (data) {
+      setItems([...items, ...data]);
       setNewItem("");
-    };
+    }
+  };
 
-    reader.readAsDataURL(file);
-  }
+  reader.readAsDataURL(file);
+}
 
   // Select items
   function toggleSelect(index: number) {
@@ -112,9 +144,23 @@ const leastWorn = outfits.reduce((min, outfit) =>
 
     setOutfits(updated);
   }
-const deleteItem = (index: number) => {
+const deleteItem = async (index: number) => {
+  const itemToDelete = items[index];
+
+  const { error } = await supabase
+    .from("items")
+    .delete()
+    .eq("id", itemToDelete.id);
+
+  if (error) {
+    console.error("Error deleting item:", error);
+    return;
+  }
+
   const updated = items.filter((_, i) => i !== index);
   setItems(updated);
+  setSelected(selected.filter((i) => i !== index));
+};
 
   // also remove from selected if needed
   setSelected(selected.filter((i) => i !== index));
@@ -124,6 +170,12 @@ const deleteItem = (index: number) => {
     <h1 style={{ fontSize: 32, fontWeight: "bold" }}>
       👕 Digital Wardrobe
     </h1>
+
+    {errorMessage && (
+      <p style={{ color: "red", marginTop: 10 }}>
+       Error: {errorMessage}
+     </p>
+    )}
 
     <p style={{ color: "#666" }}>
       Track your outfits and usage
