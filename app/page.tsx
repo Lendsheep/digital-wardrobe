@@ -157,6 +157,11 @@ export default function Home() {
     setSelected((prev) => prev.filter((i) => i !== index));
   }
 
+  function deleteOutfit(index: number) {
+  const updated = outfits.filter((_, i) => i !== index);
+  setOutfits(updated);
+  }
+
   function toggleSelect(index: number) {
     if (selected.includes(index)) {
       setSelected(selected.filter((i) => i !== index));
@@ -349,20 +354,35 @@ export default function Home() {
           <p style={{ marginTop: 5 }}>Worn: {outfit.wearCount}</p>
           <p>Last worn: {outfit.lastWorn || "Never"}</p>
 
-          <button
-            onClick={() => wearOutfit(idx)}
-            style={{
-              marginTop: 5,
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "none",
-              background: "#28a745",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            I wore this
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 5 }}>
+  <button
+    onClick={() => wearOutfit(idx)}
+    style={{
+      padding: "6px 10px",
+      borderRadius: 6,
+      border: "none",
+      background: "#28a745",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    I wore this
+  </button>
+
+  <button
+    onClick={() => deleteOutfit(idx)}
+    style={{
+      padding: "6px 10px",
+      borderRadius: 6,
+      border: "none",
+      background: "red",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    Delete Outfit
+  </button>
+</div>
         </div>
       ))}
     </div>
